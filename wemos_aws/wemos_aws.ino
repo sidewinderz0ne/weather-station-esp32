@@ -9,7 +9,7 @@
 
 String ssid = "Vivo";
 String password = "asdf12345";
-int delayMill = 5000;
+int delayMill = 2000;
 
 ESP8266WebServer server(80);
 
@@ -373,5 +373,5 @@ void deleteTopLine() {
 
 void loop() {
   server.handleClient();
-  // sendTimer.update();
+  sendTimer.update();
 }
