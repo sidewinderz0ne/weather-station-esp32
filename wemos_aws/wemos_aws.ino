@@ -29,7 +29,7 @@ void handleRoot() {
 
 void handlePost() {
   if (server.method() == HTTP_POST) {
-    String dateutc, baromabsin, baromrelin, date_jkt, solarradiation, windspeedkmh, windspeedmph, winddir, rainratein, tempf, tempinf, humidityin, uv, humidity, dateStr = "";
+    String dateutc, baromabsin,windgustmph, baromrelin, date_jkt, solarradiation, windgustkmh, windspeedkmh, windspeedmph, winddir, rainratein, tempf, tempinf, humidityin, uv, humidity, dateStr = "";
     float temp_in, temp_out = 0;
     DateTime datetimeNow, datetimePlus;
 
@@ -95,8 +95,9 @@ void handlePost() {
     tempinf = server.arg("tempinf");
     tempf = server.arg("tempf");
     windspeedmph = server.arg("windspeedmph");
+    windgustmph = server.arg("windgustmph");
 
-
+    windgustmph = windgustmph.toFloat() * 1.60934;
     windspeedkmh = windspeedmph.toFloat() * 1.60934;
     winddir = server.arg("winddir");
     rainratein = server.arg("rainratein");
@@ -109,9 +110,9 @@ void handlePost() {
     baromrelin = server.arg("baromrelin");
     baromabsin = server.arg("baromabsin");
 
-    String data = new_date_string + "," + windspeedkmh + "," + winddir + "," + rainratein + "," + temp_in + "," + humidityin + "," + uv + "," + temp_out + "," + humidity + "," + solarradiation + "," + baromrelin + "," + baromabsin;
+    String data = new_date_string + "," + windspeedkmh + "," + winddir + "," + rainratein + "," + temp_in + "," + temp_out + "," + humidityin + "," + humidity + "," + uv + "," + windgustmph + "," + baromrelin + "," + baromabsin+ "," + solarradiation;
 
-    Serial.println(data);
+    Serial.println("data awal bos: " + data);
     Serial.println(".");
 
     myFile = SD.open("/data.txt", FILE_WRITE);
@@ -282,7 +283,7 @@ void sendData() {
     rawText = myFile.readStringUntil('\n');  // read the first line of the file
     myFile.close();                          // close the file
     if (rawText != "") {
-      String values[12];  // an array to store the values
+      String values[13];  // an array to store the values
       int index = 0;
       while (rawText.length() > 0) {                // loop until there are no more values
         int separatorIndex = rawText.indexOf(",");  // find the index of the next comma
@@ -298,7 +299,7 @@ void sendData() {
       HTTPClient http;
 
       // Prepare the data
-      String data = "{\"idws\": " + String(id) + ", \"date\": \"" + String(values[0]) + "\", \"windspeedkmh\": " + String(values[1]) + ", \"winddir\": " + String(values[2]) + ", \"rain_rate\": " + String(values[3]) + ", \"temp_in\": " + String(values[3]) + ", \"temp_out\": " + String(values[4]) + ", \"hum_in\": " + String(values[5]) + ", \"hum_out\": " + String(values[6]) + ", \"uv\": " + String(values[7]) + ", \"wind_gust\": " + String(values[8]) + ", \"air_press_rel\": " + String(values[9]) + ", \"air_press_abs\": " + String(values[10]) + ", \"solar_radiation\": " + String(values[11]) + "}";
+      String data = "{\"idws\": " + String(id) + ", \"date\": \"" + String(values[0]) + "\", \"windspeedkmh\": " + String(values[1]) + ", \"winddir\": " + String(values[2]) + ", \"rain_rate\": " + String(values[3]) + ", \"temp_in\": " + String(values[4]) + ", \"temp_out\": " + String(values[5]) + ", \"hum_in\": " + String(values[6]) + ", \"hum_out\": " + String(values[7]) + ", \"uv\": " + String(values[8]) + ", \"wind_gust\": " + String(values[9]) + ", \"air_press_rel\": " + String(values[10]) + ", \"air_press_abs\": " + String(values[11]) + ", \"solar_radiation\": " + String(values[12]) + "}";
       Serial.println("data: " + data);
       // Send the POST request
       http.begin(client, "http://srs-ssms.com/iot/post-data-aws.php");
