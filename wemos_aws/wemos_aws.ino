@@ -332,7 +332,7 @@ void sendData() {
 }
 
 void connectWiFi() {
-  // WiFi.config(staticIP, gateway, subnet);
+  WiFi.config(staticIP, gateway, subnet);
   WiFi.begin(ssid, password);
   Serial.print("Connecting to ");
   Serial.println(ssid);
