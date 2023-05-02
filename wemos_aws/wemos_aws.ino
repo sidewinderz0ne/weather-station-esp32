@@ -112,8 +112,8 @@ void handlePost() {
 
     String data = new_date_string + "," + windspeedkmh + "," + winddir + "," + rainratein + "," + temp_in + "," + temp_out + "," + humidityin + "," + humidity + "," + uv + "," + windgustmph + "," + baromrelin + "," + baromabsin+ "," + solarradiation;
 
-    Serial.println("data awal bos: " + data);
-    Serial.println(".");
+    //Serial.println("data awal bos: " + data);
+    //Serial.println(".");
 
     myFile = SD.open("/data.txt", FILE_WRITE);
     if (myFile) {
@@ -257,14 +257,6 @@ void setup() {
   Serial.println("Server started");
 
   // Print the IP address
-  Serial.print("Use this URL to connect: ");
-  Serial.print("http://");
-  Serial.print(WiFi.localIP());
-  Serial.println("/");
-  Serial.print("Gateway: ");
-  Serial.println(WiFi.gatewayIP());
-  Serial.print("Subnet mask: ");
-  Serial.println(WiFi.subnetMask());
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);  // Arduino: turn the LED on (HIGH)
 
@@ -300,7 +292,7 @@ void sendData() {
 
       // Prepare the data
       String data = "{\"idws\": " + String(id) + ", \"date\": \"" + String(values[0]) + "\", \"windspeedkmh\": " + String(values[1]) + ", \"winddir\": " + String(values[2]) + ", \"rain_rate\": " + String(values[3]) + ", \"temp_in\": " + String(values[4]) + ", \"temp_out\": " + String(values[5]) + ", \"hum_in\": " + String(values[6]) + ", \"hum_out\": " + String(values[7]) + ", \"uv\": " + String(values[8]) + ", \"wind_gust\": " + String(values[9]) + ", \"air_press_rel\": " + String(values[10]) + ", \"air_press_abs\": " + String(values[11]) + ", \"solar_radiation\": " + String(values[12]) + "}";
-      Serial.println("data: " + data);
+      //Serial.println("data: " + data);
       // Send the POST request
       http.begin(client, "http://srs-ssms.com/iot/post-data-aws.php");
       http.addHeader("Content-Type", "application/json");
@@ -332,7 +324,7 @@ void sendData() {
 }
 
 void connectWiFi() {
-  WiFi.config(staticIP, gateway, subnet);
+  //WiFi.config(staticIP, gateway, subnet);
   WiFi.begin(ssid, password);
   Serial.print("Connecting to ");
   Serial.println(ssid);
@@ -342,6 +334,14 @@ void connectWiFi() {
   }
   Serial.print("Connected to ssid ");
   Serial.println(ssid);
+  Serial.print("Use this URL to connect: ");
+  Serial.print("http://");
+  Serial.print(WiFi.localIP());
+  Serial.println("/");
+  Serial.print("Gateway: ");
+  Serial.println(WiFi.gatewayIP());
+  Serial.print("Subnet mask: ");
+  Serial.println(WiFi.subnetMask());
 }
 
 void deleteTopLine() {
