@@ -1,17 +1,26 @@
+#if defined(ESP8266)
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
-#include <WiFiServer.h>
 #include <ESP8266WebServer.h>
+#include <ESP8266HTTPClient.h>
+ESP8266WebServer server(80);
+int csPin = 0;
+#elif defined(ESP32)
+#include <WiFi.h>
+#include <WebServer.h>
+#include <WiFiClient.h>
+#include <HTTPClient.h>
+WebServer server(80);
+int csPin = 5;
+#endif
+
 #include <SD.h>
 #include <RTClib.h>
 #include <Timer.h>
-#include <ESP8266HTTPClient.h>
 
 String ssid = "Vivo";
 String password = "asdf12345";
 int delayMill = 2000;
-
-ESP8266WebServer server(80);
 
 File myFile;
 
@@ -29,7 +38,7 @@ void handleRoot() {
 
 void handlePost() {
   if (server.method() == HTTP_POST) {
-    String dateutc, baromabsin,windgustmph, baromrelin, date_jkt, solarradiation, windgustkmh, windspeedkmh, windspeedmph, winddir, rainratein, tempf, tempinf, humidityin, uv, humidity, dateStr = "";
+    String dateutc, baromabsin, windgustmph, baromrelin, date_jkt, solarradiation, windgustkmh, windspeedkmh, windspeedmph, winddir, rainratein, tempf, tempinf, humidityin, uv, humidity, dateStr = "";
     float temp_in, temp_out = 0;
     DateTime datetimeNow, datetimePlus;
 
@@ -110,7 +119,7 @@ void handlePost() {
     baromrelin = server.arg("baromrelin");
     baromabsin = server.arg("baromabsin");
 
-    String data = new_date_string + "," + windspeedkmh + "," + winddir + "," + rainratein + "," + temp_in + "," + temp_out + "," + humidityin + "," + humidity + "," + uv + "," + windgustmph + "," + baromrelin + "," + baromabsin+ "," + solarradiation;
+    String data = new_date_string + "," + windspeedkmh + "," + winddir + "," + rainratein + "," + temp_in + "," + temp_out + "," + humidityin + "," + humidity + "," + uv + "," + windgustmph + "," + baromrelin + "," + baromabsin + "," + solarradiation;
 
     //Serial.println("data awal bos: " + data);
     //Serial.println(".");
@@ -147,7 +156,7 @@ void setup() {
   Serial.begin(115200);
 
   // Start the SD card
-  if (!SD.begin(0)) {
+  if (!SD.begin(csPin)) {
     Serial.println("Card failed, or not present");
     return;
   }
@@ -325,7 +334,7 @@ void sendData() {
 
 void connectWiFi() {
   //WiFi.config(staticIP, gateway, subnet);
-  WiFi.begin(ssid, password);
+  WiFi.begin(ssid.c_str(), password.c_str());
   Serial.print("Connecting to ");
   Serial.println(ssid);
   while (WiFi.status() != WL_CONNECTED) {
