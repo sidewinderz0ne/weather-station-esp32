@@ -18,9 +18,9 @@ int csPin = 5;
 #include <RTClib.h>
 #include <Timer.h>
 
-String ssid = "Vivo";
-String password = "asdf12345";
-int delayMill = 2000;
+String ssid = "SRS";
+String password = "SRS@2023";
+int delayMill = 3000;
 
 File myFile;
 
@@ -28,9 +28,12 @@ int id, testLoop = 0;
 
 Timer sendTimer;
 
-IPAddress staticIP(192, 168, 245, 94);
-IPAddress gateway(192, 168, 245, 114);
+IPAddress staticIP(10, 9, 116, 174);
+IPAddress gateway(10, 9, 116, 1);
 IPAddress subnet(255, 255, 255, 0);
+IPAddress dnsServer(192, 168, 1, 22);
+
+String payload;
 
 void handleRoot() {
   server.send(200, "text/plain", "Hello from ESP8266!");
@@ -158,12 +161,12 @@ void setup() {
   // Start the SD card
   if (!SD.begin(csPin)) {
     Serial.println("Card failed, or not present");
-    return;
+    //    return;
   }
   Serial.println("Card initialized successfully");
 
-  File myFile;                   // create a file object
-  myFile = SD.open("ssid.txt");  // open the file
+  File myFile;                    // create a file object
+  myFile = SD.open("/ssid.txt");  // open the file
   if (myFile) {
     ssid = myFile.readStringUntil('\n');
     myFile.close();  // close the file
@@ -171,7 +174,7 @@ void setup() {
     Serial.println("Error opening file!");
   }
 
-  myFile = SD.open("pass.txt");  // open the file
+  myFile = SD.open("/pass.txt");  // open the file
   if (myFile) {
     password = myFile.readStringUntil('\n');  // read the first line of the file
     myFile.close();                           // close the file
@@ -179,7 +182,7 @@ void setup() {
     Serial.println("Error opening file!");
   }
 
-  myFile = SD.open("id.txt");  // open the file
+  myFile = SD.open("/id.txt");  // open the file
   if (myFile) {
     id = myFile.readStringUntil('\n').toInt();  // read the first line of the file
     myFile.close();                             // close the file
@@ -187,7 +190,7 @@ void setup() {
     Serial.println("Error opening file!");
   }
 
-  myFile = SD.open("ip.txt");  // open the file
+  myFile = SD.open("/ip.txt");  // open the file
   if (myFile) {
     String ipString = myFile.readStringUntil('\n');  // read the first line of the file
     myFile.close();                                  // close the file
@@ -208,7 +211,7 @@ void setup() {
     Serial.println("Error opening file!");
   }
 
-  myFile = SD.open("gateway.txt");  // open the file
+  myFile = SD.open("/gateway.txt");  // open the file
   if (myFile) {
     String ipString = myFile.readStringUntil('\n');  // read the first line of the file
     myFile.close();                                  // close the file
@@ -229,7 +232,7 @@ void setup() {
     Serial.println("Error opening file!");
   }
 
-  myFile = SD.open("subnet.txt");  // open the file
+  myFile = SD.open("/subnet.txt");  // open the file
   if (myFile) {
     String ipString = myFile.readStringUntil('\n');  // read the first line of the file
     myFile.close();                                  // close the file
@@ -279,7 +282,7 @@ void sendData() {
   }
 
   String rawText;
-  myFile = SD.open("data.txt");  // open the file
+  myFile = SD.open("/data.txt");  // open the file
   if (myFile) {
     rawText = myFile.readStringUntil('\n');  // read the first line of the file
     myFile.close();                          // close the file
@@ -301,27 +304,32 @@ void sendData() {
 
       // Prepare the data
       String data = "{\"idws\": " + String(id) + ", \"date\": \"" + String(values[0]) + "\", \"windspeedkmh\": " + String(values[1]) + ", \"winddir\": " + String(values[2]) + ", \"rain_rate\": " + String(values[3]) + ", \"temp_in\": " + String(values[4]) + ", \"temp_out\": " + String(values[5]) + ", \"hum_in\": " + String(values[6]) + ", \"hum_out\": " + String(values[7]) + ", \"uv\": " + String(values[8]) + ", \"wind_gust\": " + String(values[9]) + ", \"air_press_rel\": " + String(values[10]) + ", \"air_press_abs\": " + String(values[11]) + ", \"solar_radiation\": " + String(values[12]) + "}";
-      //Serial.println("data: " + data);
-      // Send the POST request
-      http.begin(client, "http://srs-ssms.com/iot/post-data-aws.php");
-      http.addHeader("Content-Type", "application/json");
-      int httpCode = http.POST(data);
+     
+      if (payload != data) {
+        Serial.println("data: " + data);
+        // Send the POST request
+        http.begin(client, "http://srs-ssms.com/iot/post-data-aws.php");
+        http.addHeader("Content-Type", "application/json");
+        int httpCode = http.POST(data);
 
-      // Check the response
-      if (httpCode == 200) {
-        String response = http.getString();
-        Serial.println("HTTP response: " + response);
-        deleteTopLine();
-      } else if (httpCode > 0) {
-        String response = http.getString();
-        Serial.println("HTTP error response: " + response);
+        // Check the response
+        if (httpCode == 200) {
+          deleteTopLine();
+          String response = http.getString();
+          Serial.println("HTTP response: " + response);
+          payload = data;
+        } else if (httpCode > 0) {
+          String response = http.getString();
+          Serial.println("HTTP error response: " + response);
+        }
+        else {
+          Serial.print("HTTP error: ");
+          Serial.println(httpCode);
+        }
+        http.end();
+      }else{
+        Serial.println("Data masih sama!");
       }
-
-      else {
-        Serial.print("HTTP error: ");
-        Serial.println(httpCode);
-      }
-      http.end();
     }
   } else {
     Serial.println("Error opening file!");
@@ -333,7 +341,7 @@ void sendData() {
 }
 
 void connectWiFi() {
-  //WiFi.config(staticIP, gateway, subnet);
+  WiFi.config(staticIP, gateway, subnet, dnsServer);
   WiFi.begin(ssid.c_str(), password.c_str());
   Serial.print("Connecting to ");
   Serial.println(ssid);
@@ -367,7 +375,10 @@ void deleteTopLine() {
   // read each subsequent line and write to new file
   while (originalFile.available()) {
     String line = originalFile.readStringUntil('\n');
-    newFile.println(line);
+    // check if the line is not empty before writing to the new file
+    if (line.length() > 0) {
+      newFile.println(line);
+    }
   }
 
   // close both files
