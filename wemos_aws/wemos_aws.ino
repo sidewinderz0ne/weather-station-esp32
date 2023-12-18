@@ -10,13 +10,17 @@ int csPin = 0;
 #include <WebServer.h>
 #include <WiFiClient.h>
 #include <HTTPClient.h>
+#include <Ticker.h> // Include the Ticker library for ESP32
 WebServer server(80);
 int csPin = 5;
+const int relayPin = 13; 
 #endif
 
 #include <SD.h>
 #include <RTClib.h>
 #include <Timer.h>
+
+#define WATCHDOG_TIMEOUT 1200 // 20 minutes watchdog timeout in seconds
 
 String ssid = "SRS";
 String password = "SRS@2023";
@@ -26,14 +30,24 @@ File myFile;
 
 int id, testLoop = 0;
 
-Timer sendTimer;
+Timer sendTimer, checkLoop;
 
 IPAddress staticIP(10, 9, 116, 174);
 IPAddress gateway(10, 9, 116, 1);
 IPAddress subnet(255, 255, 255, 0);
 IPAddress dnsServer(192, 168, 1, 22);
 
+Ticker watchdogTicker;
+
 String payload;
+
+bool checkSend = false;
+
+void resetWatchdog() {
+  // Reset the watchdog timer to prevent it from triggering
+  esp_cpu_reset(0);
+  ESP.restart();
+}
 
 void handleRoot() {
   server.send(200, "text/plain", "Hello from ESP8266!");
@@ -59,16 +73,6 @@ void handlePost() {
     second = dateutc.substring(17, 19).toInt();
 
     String substr = "substr: " + String(year) + "," + String(month) + "," + String(day) + "," + String(hour) + "," + String(minute) + "," + String(second);
-    //Serial.println(substr);
-    // Create a DateTime object with the parsed values and set the timezone to UTC
-    // datetimeNow = DateTime(year, month, day, hour, minute, second); //salah
-
-    // dateStr = datetimeNow.toString("YYYY-MM-DD hh:mm:ss");
-    // Serial.println("DATEstr: " + dateStr);
-
-    // // Convert the datetime to Jakarta timezone and format the output
-    // datetimePlus = datetimeNow + TimeSpan(0, 7, 0, 0); // Add 7 hours to convert to Jakarta timezone
-    // date_jkt = datetimePlus.toString("YYYY-MM-DD hh:mm:ss");
 
     // Add 7 hours
     hour += 7;
@@ -127,6 +131,10 @@ void handlePost() {
     //Serial.println("data awal bos: " + data);
     //Serial.println(".");
 
+    if (data != ""){
+      checkSend = true;
+    }
+
     myFile = SD.open("/data.txt", FILE_WRITE);
     if (myFile) {
       myFile.println(data);
@@ -158,6 +166,11 @@ String zeroDate(int zero) {
 void setup() {
   Serial.begin(115200);
 
+  watchdogTicker.attach(WATCHDOG_TIMEOUT, resetWatchdog);
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, LOW);
+  delay(4000);
+  digitalWrite(relayPin, HIGH);
   // Start the SD card
   if (!SD.begin(csPin)) {
     Serial.println("Card failed, or not present");
@@ -273,6 +286,18 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);  // Arduino: turn the LED on (HIGH)
 
   sendTimer.every(delayMill, sendData);
+  checkLoop.every(330000, sendChecker);
+}
+
+void sendChecker(){
+  if (checkSend == false){
+    digitalWrite(relayPin, LOW);
+    delay(4000);
+    digitalWrite(relayPin, HIGH);
+    ESP.restart();
+  }else{
+    checkSend = false;
+  }
 }
 
 void sendData() {
@@ -395,4 +420,5 @@ void deleteTopLine() {
 void loop() {
   server.handleClient();
   sendTimer.update();
+  checkLoop.update();
 }
