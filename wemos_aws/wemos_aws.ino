@@ -10,18 +10,20 @@ int csPin = 0;
 #include <WebServer.h>
 #include <WiFiClient.h>
 #include <HTTPClient.h>
-#include <Ticker.h> // Include the Ticker library for ESP32
+#include <Ticker.h>  // Include the Ticker library for ESP32
 WebServer server(80);
 int csPin = 5;
-const int relayPin = 13; 
+const int relayPin = 13;
 #endif
 
 #include <SD.h>
 #include <RTClib.h>
 #include <Timer.h>
 
-#define WATCHDOG_TIMEOUT 1200 // 20 minutes watchdog timeout in seconds
+#define WATCHDOG_TIMEOUT 60
+volatile int watchdogMin = 0;
 
+int watchdogTimer = 11;
 String ssid = "SRS";
 String password = "SRS@2023";
 int delayMill = 3000;
@@ -30,7 +32,7 @@ File myFile;
 
 int id, testLoop = 0;
 
-Timer sendTimer, checkLoop;
+Timer sendTimer;
 
 IPAddress staticIP(10, 9, 116, 174);
 IPAddress gateway(10, 9, 116, 1);
@@ -44,9 +46,11 @@ String payload;
 bool checkSend = false;
 
 void resetWatchdog() {
-  // Reset the watchdog timer to prevent it from triggering
-  esp_cpu_reset(0);
-  ESP.restart();
+  watchdogMin++;
+  if (watchdogMin >= watchdogTimer) {
+    esp_cpu_reset(0);
+    ESP.restart();
+  }
 }
 
 void handleRoot() {
@@ -131,7 +135,7 @@ void handlePost() {
     //Serial.println("data awal bos: " + data);
     //Serial.println(".");
 
-    if (data != ""){
+    if (data != "") {
       checkSend = true;
     }
 
@@ -141,6 +145,8 @@ void handlePost() {
     }
     myFile.close();
     server.send(200, "text/plain", "Data saved to SD card.");
+    digitalWrite(LED_BUILTIN, HIGH);  // Arduino: turn the LED off (LOW)
+    delay(1000);                      // wait for a second
     digitalWrite(LED_BUILTIN, LOW);   // Arduino: turn the LED on (HIGH)
     delay(1000);                      // wait for a second
     digitalWrite(LED_BUILTIN, HIGH);  // Arduino: turn the LED off (LOW)
@@ -149,9 +155,7 @@ void handlePost() {
     delay(1000);                      // wait for a second
     digitalWrite(LED_BUILTIN, HIGH);  // Arduino: turn the LED off (LOW)
     delay(1000);
-    digitalWrite(LED_BUILTIN, LOW);   // Arduino: turn the LED on (HIGH)
-    delay(1000);                      // wait for a second
-    digitalWrite(LED_BUILTIN, HIGH);  // Arduino: turn the LED off (LOW)
+    digitalWrite(LED_BUILTIN, LOW);  // Arduino: turn the LED on (HIGH)
   }
 }
 
@@ -286,18 +290,6 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);  // Arduino: turn the LED on (HIGH)
 
   sendTimer.every(delayMill, sendData);
-  checkLoop.every(330000, sendChecker);
-}
-
-void sendChecker(){
-  if (checkSend == false){
-    digitalWrite(relayPin, LOW);
-    delay(4000);
-    digitalWrite(relayPin, HIGH);
-    ESP.restart();
-  }else{
-    checkSend = false;
-  }
 }
 
 void sendData() {
@@ -329,7 +321,7 @@ void sendData() {
 
       // Prepare the data
       String data = "{\"idws\": " + String(id) + ", \"date\": \"" + String(values[0]) + "\", \"windspeedkmh\": " + String(values[1]) + ", \"winddir\": " + String(values[2]) + ", \"rain_rate\": " + String(values[3]) + ", \"temp_in\": " + String(values[4]) + ", \"temp_out\": " + String(values[5]) + ", \"hum_in\": " + String(values[6]) + ", \"hum_out\": " + String(values[7]) + ", \"uv\": " + String(values[8]) + ", \"wind_gust\": " + String(values[9]) + ", \"air_press_rel\": " + String(values[10]) + ", \"air_press_abs\": " + String(values[11]) + ", \"solar_radiation\": " + String(values[12]) + "}";
-     
+
       if (payload != data) {
         Serial.println("data: " + data);
         // Send the POST request
@@ -346,13 +338,12 @@ void sendData() {
         } else if (httpCode > 0) {
           String response = http.getString();
           Serial.println("HTTP error response: " + response);
-        }
-        else {
+        } else {
           Serial.print("HTTP error: ");
           Serial.println(httpCode);
         }
         http.end();
-      }else{
+      } else {
         Serial.println("Data masih sama!");
       }
     }
@@ -420,5 +411,5 @@ void deleteTopLine() {
 void loop() {
   server.handleClient();
   sendTimer.update();
-  checkLoop.update();
+  watchdogMin = 0;
 }
