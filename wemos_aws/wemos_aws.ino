@@ -139,11 +139,8 @@ void handlePost() {
       checkSend = true;
     }
 
-    myFile = SD.open("/data.txt", FILE_WRITE);
-    if (myFile) {
-      myFile.println(data);
-    }
-    myFile.close();
+    appendFile(SD, "/data.txt", String(data));
+
     server.send(200, "text/plain", "Data saved to SD card.");
     digitalWrite(LED_BUILTIN, HIGH);  // Arduino: turn the LED off (LOW)
     delay(1000);                      // wait for a second
@@ -412,4 +409,26 @@ void loop() {
   server.handleClient();
   sendTimer.update();
   watchdogMin = 0;
+}
+
+void appendFile(fs::FS &fs, const char *path, String message)
+{
+  Serial.printf("Appending to file: %s\r\n", path);
+
+  File file = fs.open(path, FILE_APPEND);
+  if (!file)
+  {
+    Serial.println("- failed to open file for appending");
+    return;
+  }
+  if (file.println(message))
+  {
+    Serial.println("- message appended");
+
+  }
+  else
+  {
+    Serial.println("- append failed");
+  }
+  file.close();
 }
